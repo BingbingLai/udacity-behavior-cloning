@@ -17,11 +17,13 @@ _CORRECTION_NUM = 0.02
 
 _DROPOUT_RATE = 0.2
 
+
 _SHARP_ANGEL_THESHOLD = 0.15
 
 
 'where the driving log are stored'
 _CSV_FILE_BASE = './all_training_data/useful/{}/driving_log.csv'
+
 
 "path to the corresponding image files that's recorded in the csvs"
 _IMAGE_FILE_BASE = './all_training_data/useful/{}/IMG/'
@@ -93,9 +95,11 @@ def _get_images_and_measurements(parent_dir):
 
     for line in _get_csv_lines(parent_dir):
 
+        image_file_base = _IMAGE_FILE_BASE.format(parent_dir)
+
         # center image
         image = cv2.imread(
-            _IMAGE_FILE_BASE.format(_get_image_path(line[0]))
+            image_file_base + _get_image_path(line[0])
         )
 
         if image is None:
@@ -112,7 +116,7 @@ def _get_images_and_measurements(parent_dir):
 
         measurement = float(line[3])
 
-        if _sharp_left_turn(measurement):
+        if _left_turning(measurement):
             # left turn for right image
             source_path = line[2]
             filename = source_path.split('/')[-1]
@@ -125,7 +129,7 @@ def _get_images_and_measurements(parent_dir):
             return_measurements.append((measurement-_CORRECTION_NUM) * -1)
 
 
-        if _sharp_right_turn(measurement):
+        if _right_turning(measurement):
             # right
             source_path = line[1]
             filename = source_path.split('/')[-1]
@@ -145,15 +149,15 @@ def _get_image_path(path):
     return path.split('/')[-1]
 
 
-def _sharp_left_turn(angle):
+def _left_turning(angle):
     return angle < (-1 * _SHARP_ANGEL_THESHOLD)
 
 
-def _sharp_right_turn(angle):
+def _right_turning(angle):
     return angle > 1 * _SHARP_ANGEL_THESHOLD
 
 
-def _get_csv_lines(lines):
+def _get_csv_lines(parent_dir):
     lines = []
     # formatting of the CSV:
     # ['center', 'left', 'right', 'steering', 'throttle', 'brake', 'speed']
