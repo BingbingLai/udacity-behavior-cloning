@@ -118,16 +118,6 @@ def _get_images_and_steerings(samples, batch_size=32):
     '''
     given a parent directory, parse all the images and the angle
     '''
-    num_samples = len(samples)
-    while 1: # Loop forever so the generator never terminates
-        shuffle(samples)
-        for offset in range(0, num_samples, batch_size):
-            batch_samples = samples[offset:offset+batch_size]
-            for x, y in _generator_helper(batch_samples):
-                yield x, y
-
-
-def _generator_helper(csv_rows):
     def _get_image_path(path):
         return path.split('/')[-1]
 
@@ -137,46 +127,50 @@ def _generator_helper(csv_rows):
     def _right_turning(angle):
         return angle > 1 * _SHARP_ANGEL_THESHOLD
 
+    num_samples = len(samples)
+    while 1: # Loop forever so the generator never terminates
+        shuffle(samples)
+        for offset in range(0, num_samples, batch_size):
+            batch_samples = samples[offset:offset+batch_size]
 
-    return_images = []
-    return_steerings = []
-    for row in csv_rows:
-        # parse the csv rows
-        center, left, right, steering, _, _, _ = row
-        steering = float(steering)
+            return_images = []
+            return_steerings = []
+            for row in batch_samples:
+                # parse the csv rows
+                center, left, right, steering, _, _, _ = row
+                steering = float(steering)
 
-        dirname = center.split('/')[-3]
-        img_path_base = _IMAGE_FILE_BASE.format(dirname)
+                dirname = center.split('/')[-3]
+                img_path_base = _IMAGE_FILE_BASE.format(dirname)
 
-        center_img_fullpath = os.path.join(img_path_base, _get_image_path(center))
-        left_img_fullpath = os.path.join(img_path_base, _get_image_path(left))
-        right_img_fullpath = os.path.join(img_path_base, _get_image_path(right))
+                center_img_fullpath = os.path.join(img_path_base, _get_image_path(center))
+                left_img_fullpath = os.path.join(img_path_base, _get_image_path(left))
+                right_img_fullpath = os.path.join(img_path_base, _get_image_path(right))
 
-        # process center
-        images, steerings = _process_img_and_steering(center_img_fullpath, steering)
-        return_images.extend(images)
-        return_steerings.extend(steerings)
+                # process center
+                images, steerings = _process_img_and_steering(center_img_fullpath, steering)
+                return_images.extend(images)
+                return_steerings.extend(steerings)
 
-        # process left
-        if _left_turning(steering):
-            # right camera images to steer left a bit more
-            images, steerings = _process_img_and_steering(right_img_fullpath, steering-_CORRECTION)
-            return_images.extend(images)
-            return_steerings.extend(steerings)
+                # process left
+                if _left_turning(steering):
+                    # right camera images to steer left a bit more
+                    images, steerings = _process_img_and_steering(right_img_fullpath, steering-_CORRECTION)
+                    return_images.extend(images)
+                    return_steerings.extend(steerings)
 
-        # process right
-        if _right_turning(steering):
-            # left camera images to steer right a bit more
-            images, steerings = _process_img_and_steering(left_img_fullpath, steering + _CORRECTION)
-            return_images.extend(images)
-            return_steerings.extend(steerings)
+                # process right
+                if _right_turning(steering):
+                    # left camera images to steer right a bit more
+                    images, steerings = _process_img_and_steering(left_img_fullpath, steering + _CORRECTION)
+                    return_images.extend(images)
+                    return_steerings.extend(steerings)
 
 
-        X_train = np.array(return_images)
-        y_train = np.array(return_steerings)
+                X_train = np.array(return_images)
+                y_train = np.array(return_steerings)
 
-        yield shuffle(X_train, y_train)
-
+            yield shuffle(X_train, y_train)
 
 
 def _process_img_and_steering(image_full_path, steering):
