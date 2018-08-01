@@ -100,7 +100,7 @@ For details about how I created the training data, see the next section.
   - repeated the same process with lenet
   - did not found any solution that could make the car drive the entire track
 
-- probably spend 50+ hours training the data. None really worked; found this [article](https://medium.com/@fromtheast/you-dont-need-lots-of-data-udacity-behavioral-cloning-6d2d87316c52) wrote by the udacity student, insights are:
+- probably spend 50+ hours training the data; created [50+ models](https://github.com/BingbingLai/carnd-project-3/tree/not-generator), none really worked ;(; found this [article](https://medium.com/@fromtheast/you-dont-need-lots-of-data-udacity-behavioral-cloning-6d2d87316c52) wrote by the udacity student, insights are:
   - data is the key
   - add ranom brightless to the images
   - the turning could use the following stretagy:
