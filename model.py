@@ -12,6 +12,7 @@ from keras.layers.convolutional import Convolution2D
 from keras.layers import pooling
 from keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
 
 
 _CORRECTION = 0.02
@@ -21,6 +22,8 @@ _DROPOUT_RATE = 0.2
 
 
 _SHARP_ANGEL_THESHOLD = 0.15
+
+_TEST_SIZE = 0.2
 
 
 
@@ -48,12 +51,10 @@ def train():
     all_images = []
     all_steerings = []
     csv_rows = _get_csv_rows(training_data_paths)
+    train_samples, validation_samples = train_test_split(csv_rows, test_size=_TEST_SIZE)
 
-    all_images, all_steerings = _get_images_and_steerings(csv_rows)
-    print('total images', len(all_images))
-    print('total steerings', len(all_steerings))
-    X_train = np.array(all_images)
-    y_train = np.array(all_steerings)
+    train_generator = _get_images_and_steerings(train_samples, batch_size=32)
+    validation_generator = _get_images_and_steerings(validation_samples, batch_size=32)
 
     # the model
     model = Sequential()
@@ -72,8 +73,14 @@ def train():
     model.add(Dropout(_DROPOUT_RATE))
 
     model.compile(optimizer=Adam(lr=0.001), loss='mse' , metrics=['accuracy'])
-    print('Printing...')
-    model.fit(X_train, y_train, validation_split=0.2, shuffle=True, nb_epoch=5)
+    print('Training...')
+    model.fit_generator(
+        train_generator,
+        samples_per_epoch=len(train_samples),
+        validation_data=validation_generator,
+        nb_val_samples=len(validation_samples),
+        nb_epoch=3,
+    )
     model.save('model.h5')
     print('Done')
 
@@ -107,10 +114,20 @@ def _get_csv_rows(paths):
     return to_return
 
 
-def _get_images_and_steerings(csv_rows):
+def _get_images_and_steerings(samples, batch_size=32):
     '''
     given a parent directory, parse all the images and the angle
     '''
+    num_samples = len(samples)
+    while 1: # Loop forever so the generator never terminates
+        shuffle(samples)
+        for offset in range(0, num_samples, batch_size):
+            batch_samples = samples[offset:offset+batch_size]
+            for x, y in _generator_helper(batch_samples):
+                yield x, y
+
+
+def _generator_helper(csv_rows):
     def _get_image_path(path):
         return path.split('/')[-1]
 
@@ -119,6 +136,7 @@ def _get_images_and_steerings(csv_rows):
 
     def _right_turning(angle):
         return angle > 1 * _SHARP_ANGEL_THESHOLD
+
 
     return_images = []
     return_steerings = []
@@ -153,7 +171,12 @@ def _get_images_and_steerings(csv_rows):
             return_images.extend(images)
             return_steerings.extend(steerings)
 
-    return return_images, return_steerings
+
+        X_train = np.array(return_images)
+        y_train = np.array(return_steerings)
+
+        yield shuffle(X_train, y_train)
+
 
 
 def _process_img_and_steering(image_full_path, steering):
