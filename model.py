@@ -1,18 +1,20 @@
+import os
+import csv
+import random
+
 import cv2
 import numpy as np
-import csv
+import keras
 from keras.models import Sequential
 from keras.layers import Flatten, Dense, Lambda, Cropping2D, Dropout
-import keras
 from keras.layers.convolutional import MaxPooling2D
 from keras.layers.convolutional import Convolution2D
 from keras.layers import pooling
 from keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
-import random
 
 
-_CORRECTION_NUM = 0.02
+_CORRECTION = 0.02
 
 
 _DROPOUT_RATE = 0.2
@@ -23,7 +25,7 @@ _SHARP_ANGEL_THESHOLD = 0.15
 
 
 def train():
-    parent_dirs = [
+    training_data_paths = [
         # dataaa is the trainging data! train by ourlsef
         'dataaa',
         # trying recovery_data
@@ -42,13 +44,12 @@ def train():
         'more-curves-7',
     ]
 
+    # majaor keeey variables
     all_images = []
     all_steerings = []
-    for the_dir in parent_dirs:
-        _images, _steerings = _get_images_and_steerings(the_dir)
-        print('dir: {}, images: {}'.format(the_dir, len(_images)))
-        all_images.extend(_images)
-        all_steerings.extend(_steerings)
+    csv_rows = _get_csv_rows(training_data_paths)
+
+    all_images, all_steerings = _get_images_and_steerings(csv_rows)
     print('total images', len(all_images))
     print('total steerings', len(all_steerings))
     X_train = np.array(all_images)
@@ -77,19 +78,14 @@ def train():
     print('Done')
 
 
-def _get_images_and_steerings(parent_dir):
-    '''
-    given a parent directory, parse all the images and the angle
-    '''
-    # where the driving log are stored
-    _CSV_FILE_BASE = './all_training_data/useful/{}/driving_log.csv'
-    # path to the corresponding image files that's recorded in the csvs
-    _IMAGE_FILE_BASE = './all_training_data/useful/{}/IMG/'
+# where the driving log are stored
+_CSV_FILE_BASE = './all_training_data/useful/{}/driving_log.csv'
+# path to the corresponding image files that's recorded in the csvs
+_IMAGE_FILE_BASE = './all_training_data/useful/{}/IMG/'
 
-    def _get_image_path(path):
-        return path.split('/')[-1]
 
-    def _get_csv_lines(parent_dir):
+def _get_csv_rows(paths):
+    def _get_csv_lines_helper(parent_dir):
         lines = []
         csv_file = _CSV_FILE_BASE.format(parent_dir)
         image_file_base = _IMAGE_FILE_BASE.format(parent_dir)
@@ -100,7 +96,21 @@ def _get_images_and_steerings(parent_dir):
 
         lines = iter(lines)
         _ = next(lines)
-        return lines
+        return list(lines)
+
+    to_return = []
+    for p in paths:
+        to_return.extend(_get_csv_lines_helper(p))
+
+    return to_return
+
+
+def _get_images_and_steerings(csv_rows):
+    '''
+    given a parent directory, parse all the images and the angle
+    '''
+    def _get_image_path(path):
+        return path.split('/')[-1]
 
     def _left_turning(angle):
         return angle < (-1 * _SHARP_ANGEL_THESHOLD)
@@ -110,22 +120,34 @@ def _get_images_and_steerings(parent_dir):
 
     return_images = []
     return_steerings = []
-    for line in _get_csv_lines(parent_dir):
-        center, left, right, steering, _, _, _ = line
-        img_path_base = _IMAGE_FILE_BASE.format(parent_dir)
-
+    for row in csv_rows:
+        # parse the csv rows
+        center, left, right, steering, _, _, _ = row
         steering = float(steering)
-        images, steerings = _process_img_and_steering(img_path_base + _get_image_path(center), steering)
+
+        dirname = center.split('/')[-3]
+        img_path_base = _IMAGE_FILE_BASE.format(dirname)
+
+        center_img_fullpath = os.path.join(img_path_base, _get_image_path(center))
+        left_img_fullpath = os.path.join(img_path_base, _get_image_path(left))
+        right_img_fullpath = os.path.join(img_path_base, _get_image_path(right))
+
+        # process center
+        images, steerings = _process_img_and_steering(center_img_fullpath, steering)
         return_images.extend(images)
         return_steerings.extend(steerings)
 
+        # process left
         if _left_turning(steering):
-            images, steerings = _process_img_and_steering(img_path_base + _get_image_path(right), steering-_CORRECTION_NUM)
+            # right camera images to steer left a bit more
+            images, steerings = _process_img_and_steering(right_img_fullpath, steering-_CORRECTION)
             return_images.extend(images)
             return_steerings.extend(steerings)
 
+        # process right
         if _right_turning(steering):
-            images, steerings = _process_img_and_steering(img_path_base + _get_image_path(left), steering + _CORRECTION_NUM)
+            # left camera images to steer right a bit more
+            images, steerings = _process_img_and_steering(left_img_fullpath, steering + _CORRECTION)
             return_images.extend(images)
             return_steerings.extend(steerings)
 
@@ -135,7 +157,10 @@ def _get_images_and_steerings(parent_dir):
 def _process_img_and_steering(image_full_path, steering):
     to_return_images, to_return_steerings = [], []
     image = cv2.imread(image_full_path)
-    assert image is not None
+
+    if image is None:
+        return [], []
+
     image = _apply_random_brightness(image)
 
     # add the image and steering as it is
