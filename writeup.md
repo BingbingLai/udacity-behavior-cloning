@@ -7,7 +7,7 @@
 
 [//]: # (Image References)
 
-
+[image-aws-bill]:  ./writeup-images/aws-bill.png "Recovery Image"
 [image-recovery-1]:  ./writeup-images/left-to-middle-part1.jpg "Recovery Image"
 [image-recovery-2]: ./writeup-images/left-to-middle-part2.jpg "Recovery Image"
 [image-center-lane]: ./writeup-images/center-img.jpg "Normal Image"
@@ -107,10 +107,11 @@ For details about how I created the training data, see the next section.
 	  - when turning left, the LEFT-hand-side-images could steer more to turn left, conversely
 	  - when turning right, the RIGHT-hand-side-images could apply steer more to the right
 	  
-	  
 - with the insights above and [more data](https://github.com/BingbingLai/carnd-project-3/tree/generator), [more trained data](https://github.com/BingbingLai/udacity-behavior-cloning/tree/master/all_training_data), the car was able to drive thru the entire track 1
 	- the udacity's training data was less helpful, and was not being used to train the model. assumed the udacity's data is must needed was wrong.
 	
+- attached below the beautiful AWS bill:
+![image-aws-bill]
 
 	  
 #### 2. Final Model Architecture
