@@ -100,6 +100,8 @@ def _get_csv_rows(paths):
 
     to_return = []
     for p in paths:
+        rows = _get_csv_lines_helper(p)
+        print('{} has {} rows'.format(p, len(rows)))
         to_return.extend(_get_csv_lines_helper(p))
 
     return to_return
